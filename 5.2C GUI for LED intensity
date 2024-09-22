@@ -1,0 +1,71 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QLabel
+from PyQt5.QtCore import Qt
+import RPi.GPIO as GPIO
+
+# Setup for GPIO and PWM
+GPIO.setmode(GPIO.BCM)
+
+# Define LED pins
+led_pins = [18, 23, 24]
+pwm_instances = []
+
+# Setup GPIO pins and initialize PWM for each LED
+for pin in led_pins:
+    GPIO.setup(pin, GPIO.OUT)
+    pwm = GPIO.PWM(pin, 500)  # Set PWM frequency to 500Hz (as per the requirement)
+    pwm.start(0)  # Start with LED off
+    pwm_instances.append(pwm)
+
+# Function to update the PWM duty cycle for each LED
+def update_led_brightness(value, led_index):
+    brightness = int(value)
+    pwm_instances[led_index].ChangeDutyCycle(brightness)
+
+# Create a GUI application class using PyQt5
+class LEDControlApp(QWidget):
+    def _init_(self):
+        super()._init_()
+
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle('LED Intensity Controler')
+        self.setGeometry(100, 100, 400, 300)
+
+        # Create a layout
+        layout = QVBoxLayout()
+
+        # Create custom labels and sliders for each LED
+        labels = ['Green LED', 'Red LED', 'Blue LED']
+
+        for i in range(3):
+            label = QLabel(labels[i], self)  # Set custom label text
+            layout.addWidget(label)
+
+            slider = QSlider(Qt.Horizontal, self)
+            slider.setMinimum(0)
+            slider.setMaximum(100)
+            slider.setValue(0)
+            slider.setTickPosition(QSlider.TicksBelow)
+            slider.setTickInterval(10)
+            slider.valueChanged.connect(lambda value, i=i: update_led_brightness(value, i))
+            layout.addWidget(slider)
+
+        self.setLayout(layout)
+
+# Initialize the application and run it
+def main():
+    app = QApplication(sys.argv)
+    ex = LEDControlApp()
+    ex.show()
+    sys.exit(app.exec_())
+
+# Cleanup GPIO when the program ends
+if _name_ == '_main_':
+    try:
+        main()
+    finally:
+        for pwm in pwm_instances:
+            pwm.stop()
+        GPIO.cleanup()
